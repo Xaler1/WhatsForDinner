@@ -1,5 +1,5 @@
 import os
-
+import json
 import torch
 
 import sys
@@ -46,6 +46,8 @@ class VegetableVision:
     ):
         os.makedirs(output_dir, exist_ok=True)
 
+        # Get absolute path
+        category_space = os.path.join(os.path.dirname(__file__), category_space)
         os.chdir("./devit")
 
         self.threshold = threshold
@@ -97,8 +99,8 @@ class VegetableVision:
     ):
         num_boxes = boxes.shape[0]
 
-        font_size = int(48.0 / 4000 * np.max(image.shape[:2]) + 5)
-        width = int(10.0 / 4000 * np.max(image.shape[:2]) + 2)
+        font_size = int(48.0 / 3000 * np.max(image.shape[:2]) + 5)
+        width = int(10.0 / 3000 * np.max(image.shape[:2]) + 2)
         if num_boxes == 0:
             return image
 
@@ -181,4 +183,20 @@ class VegetableVision:
             labels=labels,
         ))
         output.save(output_file)
+        gc.collect()
+        torch.cuda.empty_cache()
         return labels
+
+
+vision = VegetableVision()
+
+while True:
+    inputs = os.listdir("./input")
+    for i in inputs:
+        print("Found new image", i)
+        img_file = f"./input/{i}"
+        output_file = f"./output/{i}"
+        ingredients = vision.get_ingredients(img_file, output_file)
+        with open(f"./output/{i}".replace(".jpg", ".txt"), "w") as f:
+            f.write("&".join(ingredients))
+        os.remove(img_file)

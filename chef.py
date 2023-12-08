@@ -27,7 +27,7 @@ Follow this schema:
 }
 You MUST follow this exact schema.
 The top level object must be a dictionary with a key "recipes" that maps to a list of recipes.
-Do not include step numbers in the steps.
+Make sure that the steps are enumerated. 
 """
 
 valid_spices_prompt = """You are a helpful cooking assistant. 
@@ -45,7 +45,7 @@ class Chef:
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": recipes_prompt},
-                {"role": "user", "content":  f"Give me {number} {difficulty} {cuisine} recipes in step-by-step detail for the following ingredients for {meal}: {ingredients}, {spice_list}"},
+                {"role": "user", "content":  f"Give me {number} {difficulty} {cuisine} recipes in step-by-step detail for the following ingredients for {meal}: {ingredients}\nSpices: {spice_list}"},
             ]
         )
         return response.choices[0].message.content

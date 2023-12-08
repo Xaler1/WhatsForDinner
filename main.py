@@ -1,3 +1,5 @@
+import os
+
 import streamlit as st
 
 # Setup page
@@ -8,35 +10,42 @@ st.subheader("Don't know what to make for dinner? Let us help you with some sugg
 with st.spinner("Loading modules..."):
     from streamlit import session_state as state
     import random
-    from vision import VegetableVision
     from chef import Chef
     import os.path as osp
     import json
+    from time import sleep
 
 
 
 # Assign a random id for the user to keep images separate
 if "user_id" not in st.session_state:
-    state["user_id"] = random.randint(0, 100)
+    user_id = random.randint(0, 10000)
+else:
+    user_id = st.session_state["user_id"]
+
 
 # Load the model
-if "vision" not in st.session_state:
-    with st.spinner("Loading model..."):
-        # get full path to the prototypes
-        category_space = osp.join(osp.dirname(__file__), "ycb_prototypes.pth")
-        state["vision"] = VegetableVision(category_space=category_space, threshold=0.5)
-        state["chef"] = Chef()
-
+if "chef" not in st.session_state:
+    state["chef"] = Chef()
     state["new_fridge_img"] = False
     state["new_spice_img"] = False
     state["img_made"] = False
 
-img_file = f"./output/input_{state['user_id']}.jpg"
-output_file = f"./output/output_{state['user_id']}.jpg"
-img_file_2 = f"./output/input_{state['user_id']}_2.jpg"
-output_file_2 = f"./output/output_{state['user_id']}_2.jpg"
-output_file_3 = f"./output/output_{state['user_id']}_3.jpg"
-new_dish_file = f"./output/new_dish_{state['user_id']}.jpg"
+fridge_input = f"./input/{user_id}.jpg"
+fridge_output = f"./output/{user_id}.jpg"
+ingredients_output = f"./output/{user_id}.txt"
+spices_input = f"./output/{user_id}_spice_in.jpg"
+spice_output = f"./output/{user_id}_spice_out.jpg"
+labels_output = f"./output/{user_id}_labels.jpg"
+new_dish_file = f"./output/new_dish_{user_id}.jpg"
+
+if "user_id" not in st.session_state:
+    state["user_id"] = user_id
+    for file in [fridge_input, fridge_output, ingredients_output, spices_input, spice_output, labels_output, new_dish_file]:
+        try:
+            os.remove(file)
+        except:
+            pass
 
 def new_img_uploaded():
     state["new_fridge_img"] = True
@@ -47,25 +56,45 @@ def new_img_uploaded():
         del state["recommendations"]
     if "img_gen" in state:
         del state["img_gen"]
+    try:
+        os.remove(fridge_output)
+    except:
+        pass
+    try:
+        os.remove(ingredients_output)
+    except:
+        pass
 
 def second_img_uploaded():
     state["new_spice_img"] = True
     if "spices" in state:
         del state["spices"]
 
+
 # Uploading a new image
-st.write("Upload an image of your fridge to get started!")
-uploaded_file_1 = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"], on_change=new_img_uploaded, label_visibility="collapsed")
-uploaded_file_2 = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"], on_change=second_img_uploaded, label_visibility="collapsed")
-if uploaded_file_1 is not None and uploaded_file_2 is not None and state["new_fridge_img"] and state["new_spices_img"]:
+st.write("Upload an image of your fridge and your spice cabinet to get started!")
+uploaded_file_1 = st.file_uploader("Choose image of your fridge", type=["jpg", "jpeg", "png"], on_change=new_img_uploaded, key="fridge_img")
+uploaded_file_2 = st.file_uploader("Choose image of your spice cabinet", type=["jpg", "jpeg", "png"], on_change=second_img_uploaded, key="spice_img")
+if uploaded_file_1 is not None and uploaded_file_2 is not None and state["new_fridge_img"] and state["new_spice_img"]:
     with st.spinner("Rummaging through your fridge...\nThis may take around half a minute"):
-        with open(img_file, 'wb') as f:
+        with open(fridge_input, 'wb') as f:
             f.write(uploaded_file_1.getvalue())
-        with open(img_file_2, 'wb') as f:
+        with open(spices_input, 'wb') as f:
             f.write(uploaded_file_2.getvalue())
-        ingredients = state["vision"].get_ingredients(img_file, output_file)
-        state["ingredients"] = list(set(ingredients))
-        spices = state["chef"].get_valid_spices(img_file_2, output_file_2, output_file_3)
+        while not osp.exists(ingredients_output):
+            sleep(1)
+        with open(ingredients_output, "r") as f:
+            ingredients = f.read().split("&")
+            ingredient_counts = {}
+            for ingredient in ingredients:
+                if ingredient not in ingredient_counts:
+                    ingredient_counts[ingredient] = 0
+                ingredient_counts[ingredient] += 1
+            result = "\n"
+            for ingredient, count in ingredient_counts.items():
+                result += f"{ingredient} ({count})\n"
+            state["ingredients"] = result
+        spices = state["chef"].get_valid_spices(spices_input, spice_output, labels_output)
         state["spices"] = spices
         st.balloons()
 
@@ -75,30 +104,28 @@ if uploaded_file_1 is not None and uploaded_file_2 is not None and state["new_fr
     
 # If an image has been uploaded and annotated then show the ingredients and allow further steps
 if state["img_made"]:
-    with open(output_file, 'rb') as file:
+    with open(fridge_output, 'rb') as file:
         st.download_button(
             label="Download Annotated Image of Fridge",
             data=file,
-            file_name="output.jpg",
+            file_name="annotated_fridge.jpg",
             mime="image/jpeg",
         )
-    with open(output_file_2, 'rb') as file:
+    with open(spice_output, 'rb') as file:
         st.download_button(
             label="Download Annotated Image of Spice Cabinet",
             data=file,
-            file_name="output_2.jpg",
+            file_name="annotated_spice.jpg",
             mime="image/jpeg",
         )
     with st.expander("Show Annotated Image", expanded=False):
-        st.image(output_file, caption="Annotated Image of Fridge", use_column_width=True)
-        st.image(output_file_2, caption="Annotated Image of Spice Cabinet", use_column_width=True)
+        st.image(fridge_output, caption="Annotated Image of Fridge", use_column_width=True)
+        st.image(spice_output, caption="Annotated Image of Spice Cabinet", use_column_width=True)
 
     if "ingredients" in state and "spices" in state:
         st.divider()
         st.write("The ingredients we found in your fridge are:")
-
-        ingredients = ", ".join(state["ingredients"])
-        st.write(ingredients)
+        st.text(state["ingredients"])
         
         st.write("The spices we found in your fridge are:")
         spices = ", ".join(state["spices"])
@@ -118,8 +145,10 @@ if state["img_made"]:
             meal = st.selectbox("What type of meal?", ["Breakfast", "Lunch", "Dinner", "Snack"])
 
         if st.button("Generate new recommendations"):
+            if "img_gen" in state:
+                del state["img_gen"]
             with st.spinner("Thinking of recipes..."):
-                recommendations = state["chef"].get_suggestions(ingredients, cuisine, difficulty, meal, spices)
+                recommendations = state["chef"].get_suggestions(state["ingredients"], cuisine, difficulty, meal, state["spices"])
                 recommendations = json.loads(recommendations)["recipes"]
                 st.session_state["recommendations"] = recommendations
 
@@ -131,7 +160,7 @@ if "recommendations" in st.session_state:
         with tabs[i]:
             st.write("Steps:")
             for j, step in enumerate(recipe["steps"]):
-                st.write(f"{j+1}. {step}")
+                st.write(step)
 
             if st.button("Imagine what this would look like", key=f"img_gen_btn_{i}"):
                 with st.spinner("Generating image..."):
