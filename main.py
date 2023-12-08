@@ -27,15 +27,19 @@ if "vision" not in st.session_state:
         state["vision"] = VegetableVision(category_space=category_space, threshold=0.5)
         state["chef"] = Chef()
 
-    state["new_img"] = False
+    state["new_fridge_img"] = False
+    state["new_spice_img"] = False
     state["img_made"] = False
 
 img_file = f"./output/input_{state['user_id']}.jpg"
 output_file = f"./output/output_{state['user_id']}.jpg"
+img_file_2 = f"./output/input_{state['user_id']}_2.jpg"
+output_file_2 = f"./output/output_{state['user_id']}_2.jpg"
+output_file_3 = f"./output/output_{state['user_id']}_3.jpg"
 new_dish_file = f"./output/new_dish_{state['user_id']}.jpg"
 
 def new_img_uploaded():
-    state["new_img"] = True
+    state["new_fridge_img"] = True
     state["img_made"] = False
     if "ingredients" in state:
         del state["ingredients"]
@@ -44,40 +48,61 @@ def new_img_uploaded():
     if "img_gen" in state:
         del state["img_gen"]
 
+def second_img_uploaded():
+    state["new_spice_img"] = True
+    if "spices" in state:
+        del state["spices"]
 
 # Uploading a new image
 st.write("Upload an image of your fridge to get started!")
-uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"], on_change=new_img_uploaded, label_visibility="collapsed")
-if uploaded_file is not None and state["new_img"]:
+uploaded_file_1 = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"], on_change=new_img_uploaded, label_visibility="collapsed")
+uploaded_file_2 = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"], on_change=second_img_uploaded, label_visibility="collapsed")
+if uploaded_file_1 is not None and uploaded_file_2 is not None and state["new_fridge_img"] and state["new_spices_img"]:
     with st.spinner("Rummaging through your fridge...\nThis may take around half a minute"):
         with open(img_file, 'wb') as f:
-            f.write(uploaded_file.getvalue())
+            f.write(uploaded_file_1.getvalue())
+        with open(img_file_2, 'wb') as f:
+            f.write(uploaded_file_2.getvalue())
         ingredients = state["vision"].get_ingredients(img_file, output_file)
         state["ingredients"] = list(set(ingredients))
+        spices = state["chef"].get_valid_spices(img_file_2, output_file_2, output_file_3)
+        state["spices"] = spices
         st.balloons()
 
     state["img_made"] = True
-    state["new_img"] = False
-
+    state["new_fridge_img"] = False
+    state["new_spice_img"] = False
+    
 # If an image has been uploaded and annotated then show the ingredients and allow further steps
 if state["img_made"]:
     with open(output_file, 'rb') as file:
         st.download_button(
-            label="Download Annotated Image",
+            label="Download Annotated Image of Fridge",
             data=file,
             file_name="output.jpg",
             mime="image/jpeg",
         )
+    with open(output_file_2, 'rb') as file:
+        st.download_button(
+            label="Download Annotated Image of Spice Cabinet",
+            data=file,
+            file_name="output_2.jpg",
+            mime="image/jpeg",
+        )
     with st.expander("Show Annotated Image", expanded=False):
-        st.image(output_file, caption="Annotated Image", use_column_width=True)
+        st.image(output_file, caption="Annotated Image of Fridge", use_column_width=True)
+        st.image(output_file_2, caption="Annotated Image of Spice Cabinet", use_column_width=True)
 
-    if "ingredients" in state:
+    if "ingredients" in state and "spices" in state:
         st.divider()
         st.write("The ingredients we found in your fridge are:")
 
         ingredients = ", ".join(state["ingredients"])
         st.write(ingredients)
-
+        
+        st.write("The spices we found in your fridge are:")
+        spices = ", ".join(state["spices"])
+        st.write(spices)
 
 
         st.divider()
@@ -94,7 +119,7 @@ if state["img_made"]:
 
         if st.button("Generate new recommendations"):
             with st.spinner("Thinking of recipes..."):
-                recommendations = state["chef"].get_suggestions(ingredients, cuisine, difficulty, meal)
+                recommendations = state["chef"].get_suggestions(ingredients, cuisine, difficulty, meal, spices)
                 recommendations = json.loads(recommendations)["recipes"]
                 st.session_state["recommendations"] = recommendations
 
