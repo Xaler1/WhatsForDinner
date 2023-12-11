@@ -25,6 +25,9 @@ dependencies lead to conflicts or weird behaviour.
 > 1. Run the vision.py file and leave it running in the background
 > 2. Start the front-end using ``streamlit run main.py``
 > 3. The website will be automatically opened in your browser
+> 4. Follow the intuitive web interface
+> 5. FYI: the progress bar is entirely fake and is just there to give a user a sense of security that something
+> is happening, while entertaining them with humorous phrases
 
 
 ## Adding new classes

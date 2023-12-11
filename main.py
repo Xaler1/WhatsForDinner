@@ -15,6 +15,21 @@ with st.spinner("Loading modules..."):
     import json
     from time import sleep
 
+loading_phrases = [
+    "Rummaging through your fridge...",
+    "Checking your spice cabinet...",
+    "Analyzing the secrets of your icebox...",
+    "Let's see what's brewing in your frozen wonderland...",
+    "Decoding the edible mysteries stored in your fridge...",
+    "Shh... the food is whispering its secrets...",
+    "Don't worry, we're not judging your midnight snack stash...",
+    "Almost done! Just a few more bites of data to process...",
+    "Hold on, your fridge's fortune is almost revealed!",
+    "We're almost done with your fridge's tarot reading...",
+    "Hold on, the broccoli is still rendering...",
+    "Don't worry, your pizza is safe from the fridge gremlins... for now...",
+    "Almost there! Just one more round of \"Where's the milk?\""
+]
 
 
 # Assign a random id for the user to keep images separate
@@ -73,30 +88,41 @@ def second_img_uploaded():
 
 # Uploading a new image
 st.write("Upload an image of your fridge and your spice cabinet to get started!")
-uploaded_file_1 = st.file_uploader("Choose image of your fridge", type=["jpg", "jpeg", "png"], on_change=new_img_uploaded, key="fridge_img")
-uploaded_file_2 = st.file_uploader("Choose image of your spice cabinet", type=["jpg", "jpeg", "png"], on_change=second_img_uploaded, key="spice_img")
+col1, col2 = st.columns(2)
+with col1:
+    uploaded_file_1 = st.file_uploader("Choose image of your fridge", type=["jpg", "jpeg", "png"], on_change=new_img_uploaded, key="fridge_img")
+with col2:
+    uploaded_file_2 = st.file_uploader("Choose image of your spice cabinet", type=["jpg", "jpeg", "png"], on_change=second_img_uploaded, key="spice_img")
 if uploaded_file_1 is not None and uploaded_file_2 is not None and state["new_fridge_img"] and state["new_spice_img"]:
-    with st.spinner("Rummaging through your fridge...\nThis may take around half a minute"):
-        with open(fridge_input, 'wb') as f:
-            f.write(uploaded_file_1.getvalue())
-        with open(spices_input, 'wb') as f:
-            f.write(uploaded_file_2.getvalue())
-        while not osp.exists(ingredients_output):
-            sleep(1)
-        with open(ingredients_output, "r") as f:
-            ingredients = f.read().split("&")
-            ingredient_counts = {}
-            for ingredient in ingredients:
-                if ingredient not in ingredient_counts:
-                    ingredient_counts[ingredient] = 0
-                ingredient_counts[ingredient] += 1
-            result = "\n"
-            for ingredient, count in ingredient_counts.items():
-                result += f"{ingredient} ({count})\n"
-            state["ingredients"] = result
-        spices = state["chef"].get_valid_spices(spices_input, spice_output, labels_output)
-        state["spices"] = spices
-        st.balloons()
+    st.write("This may take around half a minute")
+    with open(fridge_input, 'wb') as f:
+        f.write(uploaded_file_1.getvalue())
+    with open(spices_input, 'wb') as f:
+        f.write(uploaded_file_2.getvalue())
+    counter = 0
+    loading_text = loading_phrases[random.randint(0, len(loading_phrases) - 1)]
+    pbar = st.progress(0, text="Rummaging through your fridge...")
+    while not osp.exists(ingredients_output):
+        counter += 1
+        pbar.progress(min(counter,90), loading_text)
+        sleep(0.333)
+        if counter % 15 == 0:
+            loading_text = loading_phrases[random.randint(0, len(loading_phrases) - 1)]
+    pbar.progress(99, "Finalizing...")
+    with open(ingredients_output, "r") as f:
+        ingredients = f.read().split("&")
+        ingredient_counts = {}
+        for ingredient in ingredients:
+            if ingredient not in ingredient_counts:
+                ingredient_counts[ingredient] = 0
+            ingredient_counts[ingredient] += 1
+        result = "\n"
+        for ingredient, count in ingredient_counts.items():
+            result += f"{ingredient} ({count})\n"
+        state["ingredients"] = result
+    spices = state["chef"].get_valid_spices(spices_input, spice_output, labels_output)
+    state["spices"] = spices
+    pbar.empty()
 
     state["img_made"] = True
     state["new_fridge_img"] = False
