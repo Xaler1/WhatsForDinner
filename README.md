@@ -27,3 +27,12 @@ dependencies lead to conflicts or weird behaviour.
 > 3. The website will be automatically opened in your browser
 
 
+## Adding new classes
+> 1. Get some example images of the target object, around 5-6 should be enough
+> 2. Label the images with segmentation masks
+> 3. Either directly put the masks in the devit/datasets/ycb_images folder, following their naming convention,
+> or if you followed the COCO label format (with just polygon coordinates) you can use our polygon_to_mask.ipynb
+> notebook to convert them to masks. The script will need to be adapted based on where the images are stored.
+> 4. Run the devit/demo/build_prototypes.ipynb notebook to generate the prototypes file. Move the ycb_prototypes.pth
+> from devit to the top level of this repository. Or alternatively change the path in vision.py.
+
