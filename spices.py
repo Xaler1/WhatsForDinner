@@ -3,6 +3,7 @@ from google.cloud import vision
 from roboflow import Roboflow
 import io
 import cv2
+from keys import roboflow_key, google_api_file
 
 def vconcat_resize(img_list, interpolation = cv2.INTER_CUBIC): 
     # take minimum width 
@@ -18,7 +19,7 @@ def vconcat_resize(img_list, interpolation = cv2.INTER_CUBIC):
 
 def find_label_bounds(img_path, output_path, interm_path, confidence=50, overlap=30):
     # product label extraction api
-    rf = Roboflow(api_key="QeZ7cX1ZRKz0bSXLurGZ")
+    rf = Roboflow(api_key=roboflow_key)
     project = rf.workspace().project("product-lable-extraction")
     model = project.version(1).model
     
@@ -56,7 +57,7 @@ def find_label_bounds(img_path, output_path, interm_path, confidence=50, overlap
 def find_spice_text(stacked_img_path):
     # create the client interface to access the Google Cloud Vision API
     credentials = service_account.Credentials.from_service_account_file(
-        filename="spice-recognition-23db7ec653e6.json",
+        filename=google_api_file,
         scopes=["https://www.googleapis.com/auth/cloud-platform"])
     client = vision.ImageAnnotatorClient(credentials=credentials)
     # load the input image as a raw binary file

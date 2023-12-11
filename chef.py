@@ -49,6 +49,7 @@ class Chef:
             ]
         )
         return response.choices[0].message.content
+
     
     def get_valid_spices(self, img_path, output_path, interm_path):
         spices.find_label_bounds(img_path, output_path, interm_path, confidence=50, overlap=30)

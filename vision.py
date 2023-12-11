@@ -17,7 +17,6 @@ from tools.train_net import Trainer, DetectionCheckpointer
 # move back
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from torchvision.utils import draw_bounding_boxes
 from torchvision.transforms.functional import to_pil_image
 
 import seaborn as sns
@@ -96,15 +95,16 @@ class VegetableVision:
             self,
             image: torch.Tensor,
             boxes: torch.Tensor,
+            labels: list[str],
+            colors
     ):
         num_boxes = boxes.shape[0]
 
-        font_size = int(48.0 / 3000 * np.max(image.shape[:2]) + 5)
-        width = int(10.0 / 3000 * np.max(image.shape[:2]) + 2)
+        font_size = int(48.0 / 4000 * np.max(image.shape[:2]) + 5)
+        width = int(10.0 / 4000 * np.max(image.shape[:2]) + 2)
         if num_boxes == 0:
             return image
 
-        colors = self.assign_colors(boxes[:, 4], self.label_names)
         colors = [(ImageColor.getrgb(color) if isinstance(color, str) else color) for color in colors]
 
         txt_font = ImageFont.truetype(font="arial.ttf", size=font_size)
@@ -118,12 +118,10 @@ class VegetableVision:
         for bbox, color, label in zip(img_boxes, colors, labels):  # type: ignore[arg-type]
             draw.rectangle(bbox, width=width, outline=color)
 
-            if label is not None:
-                margin = width + 1
-                label_pos = (bbox[0] + margin, bbox[1] + margin)
-                textbox = draw.textbbox(label_pos, label, font=txt_font)
-                draw.rectangle(textbox, fill=color)
-                draw.text(label_pos, label, font=txt_font, fill="black")
+            textbbox = draw.textbbox((bbox[0], bbox[1]), label, font=txt_font)
+
+            draw.rectangle(textbbox, fill="black")
+            draw.text((bbox[0], bbox[1]), label, fill=color, font=txt_font)
 
         return torch.from_numpy(np.array(img_to_draw)).permute(2, 0, 1).to(dtype=torch.uint8)
 
@@ -177,10 +175,13 @@ class VegetableVision:
                             if bid1 in indexes:
                                 indexes.remove(bid1)
 
+        colors = self.assign_colors(pred_classes, self.model.label_names, seed=4)
         labels = [self.label_names[cid] for cid in pred_classes.tolist()]
-        output = to_pil_image(draw_bounding_boxes(
-            torch.as_tensor(image).permute(2, 0, 1), boxes,
-            labels=labels,
+        output = to_pil_image(self.draw_boxes(
+            torch.as_tensor(image).permute(2, 0, 1),
+            boxes,
+            labels,
+            colors
         ))
         output.save(output_file)
         gc.collect()
